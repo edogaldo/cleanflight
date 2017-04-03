@@ -82,16 +82,18 @@
 //#define USE_ACC_BMA280
 //#define USE_ACC_MMA8452
 #define USE_ACC_MPU6050
-#define USE_ACC_SPI_MPU6000
+//#define USE_ACC_SPI_MPU6000
 #define USE_ACC_SPI_MPU6500
 
 #define BARO
-#define USE_BARO_MS5611
+//#define USE_BARO_MS5611
 #define USE_BARO_BMP085
+#define USE_BARO_BMP280
 
 #define MAG
 #define USE_MAG_HMC5883
-#define USE_MAG_AK8975
+//#define USE_MAG_AK8975
+#define USE_MAG_AK8963
 
 #define USE_FLASHFS
 #define USE_FLASHTOOLS
@@ -176,10 +178,12 @@
 
 #define LED0
 
+/*
 #define LED_STRIP
 #define LED_STRIP_TIMER TIM3
 #define WS2811_DMA_TC_FLAG           DMA1_FLAG_TC6
 #define WS2811_DMA_HANDLER_IDENTIFER DMA1Channel6Descriptor
+*/
 
 #define BLACKBOX
 #define GPS
