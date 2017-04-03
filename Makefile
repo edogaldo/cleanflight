@@ -15,7 +15,7 @@
 #
 
 # The target to build, see VALID_TARGETS below
-TARGET		?= NAZE
+TARGET		?= PORT103R
 
 # Compile-time options
 OPTIONS		?=
