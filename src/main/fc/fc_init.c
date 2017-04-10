@@ -91,6 +91,7 @@
 #include "io/asyncfatfs/asyncfatfs.h"
 #include "io/transponder_ir.h"
 #include "io/osd.h"
+#include "io/osd_slave.h"
 #include "io/displayport_msp.h"
 #include "io/vtx.h"
 #include "io/vtx_smartaudio.h"
@@ -154,6 +155,21 @@ void processLoopback(void)
     }
 #endif
 }
+
+
+#ifdef BUS_SWITCH_PIN
+void busSwitchInit(void)
+{
+static IO_t busSwitchResetPin        = IO_NONE;
+
+    busSwitchResetPin = IOGetByTag(IO_TAG(BUS_SWITCH_PIN));
+    IOInit(busSwitchResetPin, OWNER_SYSTEM, 0);
+    IOConfigGPIO(busSwitchResetPin, IOCFG_OUT_PP);
+
+    // ENABLE
+    IOLo(busSwitchResetPin);
+}
+#endif
 
 void init(void)
 {
@@ -237,7 +253,7 @@ void init(void)
     }
 #endif
 
-#ifdef SPEKTRUM_BIND
+#ifdef SPEKTRUM_BIND_PIN
     if (feature(FEATURE_RX_SERIAL)) {
         switch (rxConfig()->serialrx_provider) {
         case SERIALRX_SPEKTRUM1024:
@@ -254,6 +270,10 @@ void init(void)
     delay(100);
 
     timerInit();  // timer must be initialized before any channel is allocated
+
+#ifdef BUS_SWITCH_PIN
+    busSwitchInit();
+#endif
 
 #if defined(AVOID_UART1_FOR_PWM_PPM)
     serialInit(feature(FEATURE_SOFTSERIAL),
@@ -382,25 +402,6 @@ void init(void)
 
     initBoardAlignment(boardAlignment());
 
-#ifdef CMS
-    cmsInit();
-#endif
-
-#ifdef USE_DASHBOARD
-    if (feature(FEATURE_DASHBOARD)) {
-        dashboardInit();
-    }
-#endif
-
-#ifdef USE_RTC6705
-    if (feature(FEATURE_VTX)) {
-        rtc6705_soft_spi_init();
-        current_vtx_channel = vtxConfig()->vtx_channel;
-        rtc6705_soft_spi_set_channel(vtx_freq[current_vtx_channel]);
-        rtc6705_soft_spi_set_rf_power(vtxConfig()->vtx_power);
-    }
-#endif
-
     if (!sensorsAutodetect()) {
         // if gyro was not detected due to whatever reason, we give up now.
         failureMode(FAILURE_MISSING_ACC);
@@ -439,29 +440,67 @@ void init(void)
 
     rxInit();
 
-    displayPort_t *osdDisplayPort = NULL;
+/*
+ * VTX
+ */
 
-#ifdef OSD
+#ifdef USE_RTC6705
+    if (feature(FEATURE_VTX)) {
+        rtc6705_soft_spi_init();
+        current_vtx_channel = vtxConfig()->vtx_channel;
+        rtc6705_soft_spi_set_channel(vtx_freq[current_vtx_channel]);
+        rtc6705_soft_spi_set_rf_power(vtxConfig()->vtx_power);
+    }
+#endif
+
+/*
+ * CMS, display devices and OSD
+ */
+#ifdef CMS
+    cmsInit();
+#endif
+
+#if (defined(OSD) || (defined(USE_MSP_DISPLAYPORT) && defined(CMS)) || defined(USE_OSD_SLAVE))
+    displayPort_t *osdDisplayPort = NULL;
+#endif
+
+#if defined(OSD) && !defined(USE_OSD_SLAVE)
     //The OSD need to be initialised after GYRO to avoid GYRO initialisation failure on some targets
 
     if (feature(FEATURE_OSD)) {
 #if defined(USE_MAX7456)
-        // if there is a max7456 chip for the OSD then use it, otherwise use MSP
+        // If there is a max7456 chip for the OSD then use it
         osdDisplayPort = max7456DisplayPortInit(vcdProfile());
-#elif defined(USE_MSP_DISPLAYPORT)
+#elif defined(USE_OSD_OVER_MSP_DISPLAYPORT) // OSD over MSP; not supported (yet)
         osdDisplayPort = displayPortMspInit();
 #endif
+        // osdInit  will register with CMS by itself.
         osdInit(osdDisplayPort);
     }
 #endif
 
-#if defined(USE_MSP_DISPLAYPORT) && defined(CMS)
-    // If BFOSD is active, then register it as CMS device, else register MSP.
-    if (osdDisplayPort)
-        cmsDisplayPortRegister(osdDisplayPort);
-    else
+#if defined(USE_OSD_SLAVE) && !defined(OSD)
+#if defined(USE_MAX7456)
+    // If there is a max7456 chip for the OSD then use it
+    osdDisplayPort = max7456DisplayPortInit(vcdProfile());
+    // osdInit  will register with CMS by itself.
+    osdSlaveInit(osdDisplayPort);
+#endif
+#endif
+
+#if defined(CMS) && defined(USE_MSP_DISPLAYPORT)
+    // If BFOSD is not active, then register MSP_DISPLAYPORT as a CMS device.
+    if (!osdDisplayPort)
         cmsDisplayPortRegister(displayPortMspInit());
 #endif
+
+#ifdef USE_DASHBOARD
+    // Dashbord will register with CMS by itself.
+    if (feature(FEATURE_DASHBOARD)) {
+        dashboardInit();
+    }
+#endif
+
 
 #ifdef GPS
     if (feature(FEATURE_GPS)) {
@@ -578,6 +617,10 @@ void init(void)
     latchActiveFeatures();
     motorControlEnable = true;
 
+#ifdef USE_OSD_SLAVE
+    osdSlaveTasksInit();
+#else
     fcTasksInit();
+#endif
     systemState |= SYSTEM_STATE_READY;
 }
