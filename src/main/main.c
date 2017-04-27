@@ -27,10 +27,10 @@
 
 int main(void)
 {
-    init();
+    init(); //fc_init.c
     while (true) {
-        scheduler();
-        processLoopback();
+        scheduler(); //scheduler.c
+        processLoopback(); //fc_init.c
 #ifdef SIMULATOR_BUILD
         delayMicroseconds_real(50); // max rate 20kHz
 #endif

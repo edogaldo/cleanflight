@@ -177,7 +177,7 @@ void init(void)
     HAL_Init();
 #endif
 
-    printfSupportInit();
+    printfSupportInit(); //printf.c
 
     systemInit();
 

@@ -277,7 +277,7 @@ static void cx10Nrf24Setup(rx_spi_protocol_e protocol)
     payloadSize = (protocol == RX_SPI_NRF24_CX10) ? CX10_PROTOCOL_PAYLOAD_SIZE : CX10A_PROTOCOL_PAYLOAD_SIZE;
     hopTimeout = (protocol == RX_SPI_NRF24_CX10) ? CX10_PROTOCOL_HOP_TIMEOUT : CX10A_PROTOCOL_HOP_TIMEOUT;
 
-    NRF24L01_Initialize(0); // sets PWR_UP, no CRC
+    NRF24L01_Initialize(0); //set NRF24L01_00_CONFIG(0x00)=0b00000010 - sets PWR_UP, no CRC
     NRF24L01_SetupBasic();
 
     NRF24L01_SetChannel(CX10_RF_BIND_CHANNEL);
